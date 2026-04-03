@@ -1,23 +1,29 @@
-import { Sequence, useCurrentFrame, interpolate, Easing } from 'remotion'
+import { Sequence, useCurrentFrame, interpolate } from 'remotion'
+import { eases } from 'animejs'
 import type { Options } from 'roughjs/bin/core'
 import { gen, RoughDrawable } from './rough-renderer'
 
 const WIDTH = 1280
 const HEIGHT = 720
 const GROUND_Y = 610
-function clampedProgress(frame: number, duration: number) {
+
+function progress(frame: number, duration: number) {
   return interpolate(frame, [0, duration], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
 }
 
+function ease(t: number, from: number, to: number, easeFn: (t: number) => number) {
+  return from + (to - from) * easeFn(t)
+}
+
 function drawStickFigure(x: number, y: number, opts: Options) {
   return [
-    gen.circle(x, y - 80, 60, opts),            // head
-    gen.rectangle(x - 20, y - 50, 40, 100, opts), // torso
-    gen.line(x - 10, y + 50, x - 20, y + 100, opts), // left leg
-    gen.line(x + 10, y + 50, x + 20, y + 100, opts), // right leg
+    gen.circle(x, y - 80, 60, opts),
+    gen.rectangle(x - 20, y - 50, 40, 100, opts),
+    gen.line(x - 10, y + 50, x - 20, y + 100, opts),
+    gen.line(x + 10, y + 50, x + 20, y + 100, opts),
   ]
 }
 
@@ -29,17 +35,15 @@ function drawAnvil(x: number, y: number, opts: Options) {
   })
 }
 
-// --- Phase components (each gets local frame via Sequence) ---
+// --- Phase components ---
 
 const Walk: React.FC = () => {
   const frame = useCurrentFrame()
   const seed = Math.floor(frame / 2)
   const opts: Options = { roughness: 1.5, strokeWidth: 2, seed }
 
-  const progress = clampedProgress(frame, 30)
-  const x = interpolate(progress, [0, 1], [100, 500], {
-    easing: Easing.out(Easing.cubic),
-  })
+  const t = progress(frame, 30)
+  const x = ease(t, 100, 500, eases.outBack(1.4))
 
   const parts = drawStickFigure(x, GROUND_Y - 110, opts)
   return (
@@ -57,14 +61,10 @@ const AnvilFall: React.FC = () => {
   const charX = 500
   const charY = GROUND_Y - 110
 
-  // Character standing still
   const parts = drawStickFigure(charX, charY, opts)
 
-  // Anvil accelerating down (ease-in = slow start, fast end)
-  const progress = clampedProgress(frame, 25)
-  const anvilY = interpolate(progress, [0, 1], [-50, charY - 110], {
-    easing: Easing.in(Easing.quad),
-  })
+  const t = progress(frame, 25)
+  const anvilY = ease(t, -50, charY - 110, eases.inQuad)
   const anvil = drawAnvil(charX, anvilY, opts)
 
   return (
@@ -83,14 +83,9 @@ const Squash: React.FC = () => {
   const charX = 500
   const charY = GROUND_Y - 110
 
-  // Elastic squash — overshoots then settles
-  const progress = clampedProgress(frame, 15)
-  const scaleX = interpolate(progress, [0, 1], [1, 1.8], {
-    easing: Easing.out(Easing.elastic(1)),
-  })
-  const scaleY = interpolate(progress, [0, 1], [1, 0.3], {
-    easing: Easing.out(Easing.elastic(1)),
-  })
+  const t = progress(frame, 15)
+  const scaleX = ease(t, 1, 1.8, eases.outElastic(1.5, 0.4))
+  const scaleY = ease(t, 1, 0.3, eases.outElastic(1.5, 0.4))
 
   const parts = drawStickFigure(charX, charY, opts)
   const anvil = drawAnvil(charX, charY - 110, opts)
