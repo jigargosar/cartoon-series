@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import type React from 'react'
 import { useCurrentFrame, interpolate } from 'remotion'
 import { RoughGenerator } from 'roughjs/bin/generator'
 import type { Drawable, OpSet, Options } from 'roughjs/bin/core'
@@ -49,57 +49,51 @@ const gen = new RoughGenerator()
 export const TheBonk: React.FC = () => {
   const frame = useCurrentFrame()
 
-  const scene = useMemo(() => {
-    const seed = Math.floor(frame / 2)
-    const opts: Options = { roughness: 1.5, strokeWidth: 2, seed }
+  const seed = Math.floor(frame / 2)
+  const opts: Options = { roughness: 1.5, strokeWidth: 2, seed }
 
-    const charX = interpolate(frame, [0, 30], [100, 500], { extrapolateRight: 'clamp' })
-    const charY = 500
+  const charX = interpolate(frame, [0, 30], [100, 500], { extrapolateRight: 'clamp' })
+  const charY = 500
 
-    const character = [
-      gen.circle(charX, charY - 80, 60, opts),
-      gen.rectangle(charX - 20, charY - 50, 40, 100, opts),
-      gen.line(charX - 10, charY + 50, charX - 20, charY + 100, opts),
-      gen.line(charX + 10, charY + 50, charX + 20, charY + 100, opts),
-    ]
+  const character = [
+    gen.circle(charX, charY - 80, 60, opts),
+    gen.rectangle(charX - 20, charY - 50, 40, 100, opts),
+    gen.line(charX - 10, charY + 50, charX - 20, charY + 100, opts),
+    gen.line(charX + 10, charY + 50, charX + 20, charY + 100, opts),
+  ]
 
-    const squashOpts: Options = { ...opts, roughness: 2 }
-    const squashedCharacter = [
-      gen.circle(charX, charY - 80, 60, squashOpts),
-      gen.rectangle(charX - 20, charY - 50, 40, 100, squashOpts),
-      gen.line(charX - 10, charY + 50, charX - 20, charY + 100, squashOpts),
-      gen.line(charX + 10, charY + 50, charX + 20, charY + 100, squashOpts),
-    ]
+  const squashOpts: Options = { ...opts, roughness: 2 }
+  const squashedCharacter = [
+    gen.circle(charX, charY - 80, 60, squashOpts),
+    gen.rectangle(charX - 20, charY - 50, 40, 100, squashOpts),
+    gen.line(charX - 10, charY + 50, charX - 20, charY + 100, squashOpts),
+    gen.line(charX + 10, charY + 50, charX + 20, charY + 100, squashOpts),
+  ]
 
-    const anvilOpts: Options = { ...opts, fill: '#888', fillStyle: 'cross-hatch' }
+  const anvilOpts: Options = { ...opts, fill: '#888', fillStyle: 'cross-hatch' }
 
-    const fallProgress = interpolate(frame, [30, 55], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
-    const anvilY = interpolate(fallProgress, [0, 1], [-50, charY - 110])
-    const fallingAnvil = gen.rectangle(charX - 30, anvilY, 60, 40, anvilOpts)
-    const landedAnvil = gen.rectangle(charX - 30, charY - 110, 60, 40, anvilOpts)
+  const fallProgress = interpolate(frame, [30, 55], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  const anvilY = interpolate(fallProgress, [0, 1], [-50, charY - 110])
+  const fallingAnvil = gen.rectangle(charX - 30, anvilY, 60, 40, anvilOpts)
+  const landedAnvil = gen.rectangle(charX - 30, charY - 110, 60, 40, anvilOpts)
 
-    const squashProgress = interpolate(frame, [60, 75], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
-    const scaleX = interpolate(squashProgress, [0, 1], [1, 1.8])
-    const scaleY = interpolate(squashProgress, [0, 1], [1, 0.3])
+  const squashProgress = interpolate(frame, [60, 75], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  const scaleX = interpolate(squashProgress, [0, 1], [1, 1.8])
+  const scaleY = interpolate(squashProgress, [0, 1], [1, 0.3])
 
-    const starAngle = interpolate(frame, [90, 120], [0, Math.PI * 4])
-    const stars = [0, 1, 2].map(i => {
-      const angle = starAngle + (i * Math.PI * 2) / 3
-      const starCenterY = charY - 80 * 0.3
-      return gen.circle(
-        charX + Math.cos(angle) * 60,
-        starCenterY + Math.sin(angle) * 30,
-        15,
-        { roughness: 0.8, strokeWidth: 2, fill: '#ffcc00', fillStyle: 'solid', seed: seed + i },
-      )
-    })
+  const starAngle = interpolate(frame, [90, 120], [0, Math.PI * 4])
+  const stars = [0, 1, 2].map(i => {
+    const angle = starAngle + (i * Math.PI * 2) / 3
+    const starCenterY = charY - 80 * 0.3
+    return gen.circle(
+      charX + Math.cos(angle) * 60,
+      starCenterY + Math.sin(angle) * 30,
+      15,
+      { roughness: 0.8, strokeWidth: 2, fill: '#ffcc00', fillStyle: 'solid', seed: seed + i },
+    )
+  })
 
-    const ground = gen.line(0, charY + 110, 1280, charY + 110, { roughness: 1, strokeWidth: 2, seed: 1 })
-
-    return { charX, charY, character, squashedCharacter, fallingAnvil, landedAnvil, scaleX, scaleY, stars, ground }
-  }, [frame])
-
-  const { charX, charY, character, squashedCharacter, fallingAnvil, landedAnvil, scaleX, scaleY, stars, ground } = scene
+  const ground = gen.line(0, charY + 110, 1280, charY + 110, { roughness: 1, strokeWidth: 2, seed: 1 })
 
   return (
     <svg viewBox="0 0 1280 720" width={1280} height={720} style={{ background: '#fff' }}>
