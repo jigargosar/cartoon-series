@@ -63,6 +63,7 @@ export interface Scene {
     name: string
     width: number
     height: number
+    background: string
     elements: Element[]
     animations: AnimationStep[]
 }

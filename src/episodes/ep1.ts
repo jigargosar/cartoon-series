@@ -8,6 +8,7 @@ export const episode1: Episode = {
             name: 'A Peaceful Day',
             width: 800,
             height: 450,
+            background: '#e0f2fe',
             elements: [
                 // Sky is the SVG background (bg-sky-100)
                 // Ground
@@ -40,6 +41,7 @@ export const episode1: Episode = {
             name: 'Ball Arrives',
             width: 800,
             height: 450,
+            background: '#e0f2fe',
             elements: [
                 { id: 'ground', shape: 'rect', x: 0, y: 350, w: 800, h: 100, style: { fill: '#4ade80', fillStyle: 'solid', stroke: '#166534', roughness: 1.5 } },
                 { id: 'sun', shape: 'circle', x: 680, y: 80, d: 70, style: { fill: '#facc15', fillStyle: 'solid', stroke: '#ca8a04', roughness: 1 } },
@@ -66,6 +68,7 @@ export const episode1: Episode = {
             name: 'Exploring',
             width: 800,
             height: 450,
+            background: '#e0f2fe',
             elements: [
                 { id: 'ground', shape: 'rect', x: 0, y: 350, w: 800, h: 100, style: { fill: '#4ade80', fillStyle: 'solid', stroke: '#166534', roughness: 1.5 } },
                 { id: 'sun', shape: 'circle', x: 680, y: 80, d: 70, style: { fill: '#facc15', fillStyle: 'solid', stroke: '#ca8a04', roughness: 1 } },
@@ -100,6 +103,7 @@ export const episode1: Episode = {
             name: 'Sunset',
             width: 800,
             height: 450,
+            background: '#fef3c7',
             elements: [
                 { id: 'ground', shape: 'rect', x: 0, y: 350, w: 800, h: 100, style: { fill: '#4ade80', fillStyle: 'solid', stroke: '#166534', roughness: 1.5 } },
                 // Sun lower in sky

@@ -1,3 +1,4 @@
+import { SVG } from '@svgdotjs/svg.js'
 import rough from 'roughjs'
 import { createTimeline } from 'animejs'
 import type { AnimationParams } from 'animejs'
@@ -7,15 +8,13 @@ import { episode1 } from './episodes/ep1.ts'
 // --- Cartoon Runtime ---
 
 function playScene(scene: Scene, container: HTMLDivElement) {
-    // Create SVG canvas
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-    svg.setAttribute('width', String(scene.width))
-    svg.setAttribute('height', String(scene.height))
-    svg.setAttribute('viewBox', `0 0 ${scene.width} ${scene.height}`)
-    svg.classList.add('bg-sky-100', 'rounded-lg', 'shadow-lg')
     container.querySelector('svg')?.remove()
-    container.prepend(svg)
-
+    const svg = SVG().addTo(container)
+        .size(scene.width, scene.height)
+        .viewbox(0, 0, scene.width, scene.height)
+        .addClass('rounded-lg shadow-lg')
+        .css('background', scene.background)
+        .node
     const rc = rough.svg(svg)
 
     // Draw all elements
