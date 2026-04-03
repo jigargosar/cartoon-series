@@ -2,24 +2,33 @@ import { SVG } from '@svgdotjs/svg.js'
 import rough from 'roughjs'
 import { createTimeline } from 'animejs'
 import type { AnimationParams } from 'animejs'
-import type { Scene } from './types.ts'
+import type { Episode, Scene } from './types.ts'
 import { episode1 } from './episodes/ep1.ts'
 
 // --- Cartoon Runtime ---
 
-function playScene(scene: Scene, container: HTMLDivElement) {
-    container.querySelector('svg')?.remove()
-    const svg = SVG().addTo(container)
-        .size(scene.width, scene.height)
-        .viewbox(0, 0, scene.width, scene.height)
-        .addClass('rounded-lg shadow-lg')
-        .css('background', scene.background)
-        .node
-    const rc = rough.svg(svg)
+function sceneDuration(scene: Scene): number {
+    let max = 0
+    for (const a of scene.animations) {
+        const offset = typeof a.offset === 'number' ? a.offset : 0
+        max = Math.max(max, offset + a.duration)
+    }
+    return max
+}
 
-    // Draw all elements
-    const elements = new Map<string, SVGGElement>()
+function drawSceneGroup(scene: Scene, index: number, rc: ReturnType<typeof rough.svg>, width: number, height: number): SVGGElement {
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    group.setAttribute('id', `scene-${index}`)
+    group.style.display = index === 0 ? '' : 'none'
 
+    // Background rect (plain SVG, not rough)
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+    bg.setAttribute('width', String(width))
+    bg.setAttribute('height', String(height))
+    bg.setAttribute('fill', scene.background)
+    group.appendChild(bg)
+
+    // Draw elements with namespaced IDs
     for (const el of scene.elements) {
         let node: SVGGElement
         switch (el.shape) {
@@ -39,25 +48,70 @@ function playScene(scene: Scene, container: HTMLDivElement) {
                 node = rc.path(el.d, el.style)
                 break
         }
-        node.setAttribute('id', el.id)
-        if (el.transformOrigin) {
-            node.style.transformOrigin = el.transformOrigin
-        }
-        svg.appendChild(node)
-        elements.set(el.id, node)
+        node.setAttribute('id', `s${index}-${el.id}`)
+        if (el.transformOrigin) node.style.transformOrigin = el.transformOrigin
+        group.appendChild(node)
     }
 
-    // Build anime.js timeline from animation steps
+    return group
+}
+
+function playEpisode(episode: Episode, container: HTMLDivElement) {
+    container.querySelector('svg')?.remove()
+
+    const { width, height } = episode.scenes[0]
+    const svg = SVG().addTo(container)
+        .size(width, height)
+        .viewbox(0, 0, width, height)
+        .addClass('rounded-lg shadow-lg')
+        .node
+    const rc = rough.svg(svg)
+
+    // Calculate when each scene starts on the master timeline
+    const sceneOffsets: number[] = []
+    let cumulative = 0
+    for (const scene of episode.scenes) {
+        sceneOffsets.push(cumulative)
+        cumulative += sceneDuration(scene)
+    }
+    const totalDuration = cumulative
+
+    // Draw all scenes and build one master timeline
     const tl = createTimeline({ autoplay: false })
+    const sceneGroups: SVGGElement[] = []
 
-    for (const step of scene.animations) {
-        const params: AnimationParams = { ...step.props, duration: step.duration }
-        if (step.easing) params.easing = step.easing
-        if (step.delay !== undefined) params.delay = step.delay
-        tl.add(`#${step.target}`, params, step.offset ?? 0)
+    for (let i = 0; i < episode.scenes.length; i++) {
+        const scene = episode.scenes[i]
+        const group = drawSceneGroup(scene, i, rc, width, height)
+        svg.appendChild(group)
+        sceneGroups.push(group)
+
+        const baseOffset = sceneOffsets[i]
+        for (const step of scene.animations) {
+            const stepOffset = typeof step.offset === 'number' ? step.offset : 0
+            const params: AnimationParams = { ...step.props, duration: step.duration }
+            if (step.easing) params.easing = step.easing
+            if (step.delay !== undefined) params.delay = step.delay
+            tl.add(`#s${i}-${step.target}`, params, baseOffset + stepOffset)
+        }
     }
 
-    return { timeline: tl, svg, elements }
+    // Show the right scene group based on current time
+    function updateVisibleScene(time: number) {
+        let activeIndex = 0
+        for (let i = episode.scenes.length - 1; i >= 0; i--) {
+            if (time >= sceneOffsets[i]) {
+                activeIndex = i
+                break
+            }
+        }
+        for (let i = 0; i < sceneGroups.length; i++) {
+            sceneGroups[i].style.display = i === activeIndex ? '' : 'none'
+        }
+        return activeIndex
+    }
+
+    return { timeline: tl, totalDuration, sceneOffsets, updateVisibleScene }
 }
 
 // --- UI ---
@@ -66,7 +120,7 @@ const app = document.querySelector<HTMLDivElement>('#app')!
 
 app.innerHTML = `
 <div class="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4 p-8">
-    <h1 id="scene-title" class="text-white text-2xl font-bold font-mono"></h1>
+    <h1 id="title" class="text-white text-2xl font-bold font-mono"></h1>
     <div id="canvas-container"></div>
     <div id="controls" class="flex items-center gap-4 w-[800px]">
         <button id="play-btn" class="px-4 py-2 bg-white rounded shadow text-sm font-mono cursor-pointer hover:bg-gray-100 active:bg-gray-200">Play</button>
@@ -78,7 +132,7 @@ app.innerHTML = `
 `
 
 const canvasContainer = document.getElementById('canvas-container')!
-const sceneTitle = document.getElementById('scene-title')!
+const titleEl = document.getElementById('title')!
 const scrubber = document.getElementById('scrubber') as HTMLInputElement
 const playBtn = document.getElementById('play-btn') as HTMLButtonElement
 const timeDisplay = document.getElementById('time') as HTMLSpanElement
@@ -86,74 +140,65 @@ const sceneNav = document.getElementById('scene-nav')!
 
 // --- Episode player ---
 
-const scenes = episode1.scenes
-let currentTimeline: ReturnType<typeof createTimeline> | null = null
+const episode = episode1
+const { timeline, totalDuration, sceneOffsets, updateVisibleScene } = playEpisode(episode, canvasContainer as HTMLDivElement)
 
-function loadScene(index: number) {
-    const scene = scenes[index]
-    sceneTitle.textContent = `${episode1.title} — ${scene.name}`
+titleEl.textContent = episode.title
+scrubber.max = String(totalDuration)
 
-    const { timeline } = playScene(scene, canvasContainer as HTMLDivElement)
-    currentTimeline = timeline
+// Scene nav buttons (seek shortcuts)
+sceneNav.innerHTML = episode.scenes
+    .map((s, i) => `<button class="px-3 py-1 rounded text-sm font-mono cursor-pointer bg-gray-800 text-gray-400 hover:bg-gray-700" data-scene="${i}">${i + 1}. ${s.name}</button>`)
+    .join('')
 
-    scrubber.max = String(timeline.duration)
-    scrubber.value = '0'
-    timeDisplay.textContent = `0 / ${Math.round(timeline.duration)}ms`
-    playBtn.textContent = 'Play'
-
-    // Update nav buttons
-    sceneNav.innerHTML = scenes
-        .map((s, i) => {
-            const active = i === index
-            return `<button class="px-3 py-1 rounded text-sm font-mono cursor-pointer ${active ? 'bg-white text-gray-900' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}" data-scene="${i}">${i + 1}. ${s.name}</button>`
-        })
-        .join('')
-
-    // Wire up update callback via a polling approach since createTimeline doesn't support onUpdate
-    let rafId = 0
-    const tick = () => {
-        if (currentTimeline === timeline) {
-            scrubber.value = String(timeline.currentTime)
-            timeDisplay.textContent = `${Math.round(timeline.currentTime)} / ${Math.round(timeline.duration)}ms`
-            if (timeline.completed) {
-                playBtn.textContent = 'Play'
-            }
-            rafId = requestAnimationFrame(tick)
-        }
-    }
-    cancelAnimationFrame(rafId)
-    rafId = requestAnimationFrame(tick)
-}
-
-// Scene nav clicks
 sceneNav.addEventListener('click', (e) => {
     const btn = (e.target as HTMLElement).closest('button')
     if (btn) {
         const idx = Number(btn.dataset['scene'])
-        if (!isNaN(idx)) loadScene(idx)
+        if (!isNaN(idx)) {
+            timeline.pause()
+            timeline.seek(sceneOffsets[idx])
+            updateVisibleScene(sceneOffsets[idx])
+            playBtn.textContent = 'Play'
+        }
     }
 })
 
-// Play / pause
 playBtn.addEventListener('click', () => {
-    if (!currentTimeline) return
-    if (currentTimeline.paused) {
-        if (currentTimeline.completed) currentTimeline.restart()
-        else currentTimeline.play()
+    if (timeline.paused) {
+        if (timeline.completed) timeline.restart()
+        else timeline.play()
         playBtn.textContent = 'Pause'
     } else {
-        currentTimeline.pause()
+        timeline.pause()
         playBtn.textContent = 'Play'
     }
 })
 
-// Scrubber
 scrubber.addEventListener('input', () => {
-    if (!currentTimeline) return
-    currentTimeline.pause()
-    currentTimeline.seek(Number(scrubber.value))
+    timeline.pause()
+    const time = Number(scrubber.value)
+    timeline.seek(time)
+    updateVisibleScene(time)
     playBtn.textContent = 'Play'
 })
 
-// Start
-loadScene(0)
+// Sync loop — updates scrubber, time display, and active scene
+const tick = () => {
+    const time = timeline.currentTime
+    scrubber.value = String(time)
+    timeDisplay.textContent = `${Math.round(time)} / ${Math.round(totalDuration)}ms`
+    updateVisibleScene(time)
+
+    if (timeline.completed) playBtn.textContent = 'Play'
+
+    // Highlight active scene button
+    const activeIndex = updateVisibleScene(time)
+    const buttons = sceneNav.querySelectorAll('button')
+    buttons.forEach((btn, i) => {
+        btn.className = `px-3 py-1 rounded text-sm font-mono cursor-pointer ${i === activeIndex ? 'bg-white text-gray-900' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`
+    })
+
+    requestAnimationFrame(tick)
+}
+requestAnimationFrame(tick)
