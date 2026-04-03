@@ -10,20 +10,14 @@ const FPS = 30
 const CHAR_Y = GROUND_Y - 110
 
 // Scene state — timeline mutates this on seek()
-const scene = {
-  charX: 100,
-  anvilY: -50,
-  scaleX: 1,
-  scaleY: 1,
-  starAngle: 0,
-}
+const scene: Record<string, number> = {}
 
 // Choreography: all timing and easing in one place
 const tl = createTimeline({ autoplay: false })
-tl.add(scene, { charX: 500, duration: 1000, ease: 'outBack(1.4)' }, 0)
-tl.add(scene, { anvilY: CHAR_Y - 110, duration: 830, ease: 'inQuad' }, 1000)
-tl.add(scene, { scaleX: 1.8, scaleY: 0.3, duration: 500, ease: 'outElastic(1.5, 0.4)' }, 2000)
-tl.add(scene, { starAngle: Math.PI * 4, duration: 1000 }, 3000)
+tl.add(scene, { charX: [100, 500], duration: 1000, ease: 'outBack(1.4)' }, 0)
+tl.add(scene, { anvilY: [-50, CHAR_Y - 110], duration: 830, ease: 'inQuad' }, 1000)
+tl.add(scene, { scaleX: [1, 1.8], scaleY: [1, 0.3], duration: 500, ease: 'outElastic(1.5, 0.4)' }, 2000)
+tl.add(scene, { starAngle: [0, Math.PI * 4], duration: 1000 }, 3000)
 
 function drawStickFigure(x: number, y: number, opts: Options) {
   return [
