@@ -4,102 +4,88 @@ import rough from 'roughjs'
 
 export const TheBonk: React.FC = () => {
   const frame = useCurrentFrame()
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
 
   useEffect(() => {
-    if (!canvasRef.current) return
+    const svg = svgRef.current
+    if (!svg) return
 
-    const ctx = canvasRef.current.getContext('2d')
-    if (!ctx) return
+    // Clear previous frame
+    while (svg.firstChild) svg.removeChild(svg.firstChild)
 
-    ctx.clearRect(0, 0, 1280, 720)
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, 1280, 720)
-
-    const rc = rough.canvas(canvasRef.current)
+    const rc = rough.svg(svg)
     const seed = Math.floor(frame / 2)
+    const opts = { roughness: 1.5, strokeWidth: 2, seed }
 
     // Phase timings (30fps): 0-30 walk, 30-60 fall, 60-90 squash, 90-120 stars
-
-    // Character position
     const charX = interpolate(frame, [0, 30], [100, 500], { extrapolateRight: 'clamp' })
     const charY = 500
 
     // Draw character (before squash phase)
     if (frame < 60) {
-      rc.circle(charX, charY - 80, 60, { roughness: 1.5, strokeWidth: 2, seed })
-      rc.rectangle(charX - 20, charY - 50, 40, 100, { roughness: 1.5, strokeWidth: 2, seed })
-      // Legs
-      rc.line(charX - 10, charY + 50, charX - 20, charY + 100, { roughness: 1.5, strokeWidth: 2, seed })
-      rc.line(charX + 10, charY + 50, charX + 20, charY + 100, { roughness: 1.5, strokeWidth: 2, seed })
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+      g.appendChild(rc.circle(charX, charY - 80, 60, opts))
+      g.appendChild(rc.rectangle(charX - 20, charY - 50, 40, 100, opts))
+      g.appendChild(rc.line(charX - 10, charY + 50, charX - 20, charY + 100, opts))
+      g.appendChild(rc.line(charX + 10, charY + 50, charX + 20, charY + 100, opts))
+      svg.appendChild(g)
     }
 
-    // Falling object (anvil shape) - visible from frame 30
-    if (frame >= 30) {
+    // Falling anvil (frame 30+)
+    if (frame >= 30 && frame < 60) {
       const fallProgress = interpolate(frame, [30, 55], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
       const objY = interpolate(fallProgress, [0, 1], [-50, charY - 110])
-
-      rc.rectangle(charX - 30, objY, 60, 40, {
-        roughness: 1.5,
-        strokeWidth: 2,
-        fill: '#888',
-        fillStyle: 'cross-hatch',
-        seed,
-      })
+      svg.appendChild(rc.rectangle(charX - 30, objY, 60, 40, {
+        ...opts, fill: '#888', fillStyle: 'cross-hatch',
+      }))
     }
 
-    // Squash phase - flatten the character
+    // Squash phase (frame 60+)
     if (frame >= 60) {
       const squashProgress = interpolate(frame, [60, 75], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
       const scaleY = interpolate(squashProgress, [0, 1], [1, 0.3])
-      const squashWidth = interpolate(squashProgress, [0, 1], [1, 1.8])
+      const scaleX = interpolate(squashProgress, [0, 1], [1, 1.8])
 
-      ctx.save()
-      ctx.translate(charX, charY + 100)
-      ctx.scale(squashWidth, scaleY)
-      ctx.translate(-charX, -(charY + 100))
-
-      rc.circle(charX, charY - 80, 60, { roughness: 2, strokeWidth: 2, seed })
-      rc.rectangle(charX - 20, charY - 50, 40, 100, { roughness: 2, strokeWidth: 2, seed })
-      rc.line(charX - 10, charY + 50, charX - 20, charY + 100, { roughness: 2, strokeWidth: 2, seed })
-      rc.line(charX + 10, charY + 50, charX + 20, charY + 100, { roughness: 2, strokeWidth: 2, seed })
-
-      ctx.restore()
+      // Squashed character
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+      g.setAttribute('transform', `translate(${charX}, ${charY + 100}) scale(${scaleX}, ${scaleY}) translate(${-charX}, ${-(charY + 100)})`)
+      g.appendChild(rc.circle(charX, charY - 80, 60, { ...opts, roughness: 2 }))
+      g.appendChild(rc.rectangle(charX - 20, charY - 50, 40, 100, { ...opts, roughness: 2 }))
+      g.appendChild(rc.line(charX - 10, charY + 50, charX - 20, charY + 100, { ...opts, roughness: 2 }))
+      g.appendChild(rc.line(charX + 10, charY + 50, charX + 20, charY + 100, { ...opts, roughness: 2 }))
+      svg.appendChild(g)
 
       // Anvil sitting on top
-      rc.rectangle(charX - 30, charY - 110, 60, 40, {
-        roughness: 1.5,
-        strokeWidth: 2,
-        fill: '#888',
-        fillStyle: 'cross-hatch',
-        seed,
-      })
+      svg.appendChild(rc.rectangle(charX - 30, charY - 110, 60, 40, {
+        ...opts, fill: '#888', fillStyle: 'cross-hatch',
+      }))
     }
 
     // Stars circling head (frame 90+)
     if (frame >= 90) {
       const starAngle = interpolate(frame, [90, 120], [0, Math.PI * 4])
-      const numStars = 3
-      for (let i = 0; i < numStars; i++) {
-        const angle = starAngle + (i * Math.PI * 2) / numStars
-        const radius = 60
-        const starCenterY = charY - 80 * 0.3 // adjusted for squash
-        const sx = charX + Math.cos(angle) * radius
-        const sy = starCenterY + Math.sin(angle) * radius * 0.5
-
-        rc.circle(sx, sy, 15, { roughness: 0.8, strokeWidth: 2, fill: '#ffcc00', fillStyle: 'solid', seed: seed + i })
+      for (let i = 0; i < 3; i++) {
+        const angle = starAngle + (i * Math.PI * 2) / 3
+        const starCenterY = charY - 80 * 0.3
+        const sx = charX + Math.cos(angle) * 60
+        const sy = starCenterY + Math.sin(angle) * 30
+        svg.appendChild(rc.circle(sx, sy, 15, {
+          roughness: 0.8, strokeWidth: 2, fill: '#ffcc00', fillStyle: 'solid', seed: seed + i,
+        }))
       }
     }
 
     // Ground line
-    rc.line(0, charY + 110, 1280, charY + 110, { roughness: 1, strokeWidth: 2, seed: 1 })
+    svg.appendChild(rc.line(0, charY + 110, 1280, charY + 110, { roughness: 1, strokeWidth: 2, seed: 1 }))
   }, [frame])
 
   return (
-    <canvas
-      ref={canvasRef}
+    <svg
+      ref={svgRef}
+      viewBox="0 0 1280 720"
       width={1280}
       height={720}
+      style={{ background: '#ffffff' }}
     />
   )
 }
