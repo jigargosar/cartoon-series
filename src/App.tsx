@@ -6,7 +6,7 @@ export default function App() {
     <div className="w-full h-screen bg-gray-100 flex items-center justify-center">
       <Player
         component={TheBonk}
-        durationInFrames={120}
+        durationInFrames={330}
         fps={30}
         compositionWidth={1280}
         compositionHeight={720}
