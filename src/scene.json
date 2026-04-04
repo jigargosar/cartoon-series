@@ -1,9 +1,10 @@
 {
   "characters": {
-    "red": { "x": -300, "y": 0, "size": 50, "fill": "#f87171" }
+    "red": { "x": -300, "y": 0, "size": 50, "fill": "#f87171" },
+    "blue": { "x": 100, "y": 0, "size": 50, "fill": "#60a5fa" }
   },
   "beats": [
     { "t": 0 },
-    { "t": 1000, "red": { "x": 0 }, "ease": "inQuad" }
+    { "t": 1000, "red": { "x": 50 }, "ease": "inQuad" }
   ]
 }
