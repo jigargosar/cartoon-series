@@ -1,0 +1,3 @@
+- we don't even know how these work
+  - compositionWidth={WIDTH} // how many pixels Scene has to draw in
+  - compositionHeight={HEIGHT} // how many pixels Scene has to draw in
