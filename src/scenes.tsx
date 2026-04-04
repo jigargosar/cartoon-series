@@ -3,7 +3,6 @@ import { createTimeline } from 'animejs'
 import { circle, rectangle, line } from './rough'
 
 const W = 800
-const H = 450
 const FPS = 30
 
 const solid = (fill: string) =>
@@ -20,10 +19,10 @@ export function BallSlide() {
   ballTl.seek((frame / FPS) * 1000)
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ background: '#fff', width: '100%', height: '100%' }}>
+    <g>
       {circle(ballScene.x, 300, 60, solid('#4ade80'))}
       {line(0, 340, W, 340, { roughness: 1, strokeWidth: 2 })}
-    </svg>
+    </g>
   )
 }
 
@@ -43,11 +42,11 @@ export function BoxDrop() {
   const sy = boxScene.scaleY ?? 1
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ background: '#fff', width: '100%', height: '100%' }}>
+    <g>
       <g transform={`translate(400, ${280 + 60}) scale(${sx}, ${sy}) translate(-400, ${-(280 + 60)})`}>
         {rectangle(370, boxScene.y, 60, 60, solid('#f87171'))}
       </g>
       {line(0, 340, W, 340, { roughness: 1, strokeWidth: 2 })}
-    </svg>
+    </g>
   )
 }
