@@ -1,30 +1,37 @@
+import { useCallback } from 'react'
 import { Player } from '@remotion/player'
-import { SceneRenderer } from './interpreter'
-import sceneData from './scene.json'
+import { SceneRenderer, type SceneData } from './interpreter'
+import initialScene from './scene.json'
 
 const ASPECT_RATIO = 16 / 9
 const WIDTH = 800
 const HEIGHT = Math.round(WIDTH / ASPECT_RATIO)
 const FPS = 30
 
-// Derive total frames from last beat
-const lastBeat = sceneData.beats[sceneData.beats.length - 1]
-const totalFrames = Math.ceil((lastBeat.t / 1000) * FPS) + 5 // small buffer after last beat
+function getTotalFrames(data: SceneData) {
+    const lastBeat = data.beats[data.beats.length - 1]
+    return Math.ceil((lastBeat.t / 1000) * FPS) + 5
+}
 
-function Scene() {
+function Scene({ data }: { data: SceneData }) {
     return (
         <svg viewBox="-400 -225 800 450" style={{ background: '#c8d0d8', width: '100%', height: '100%' }}>
-            <SceneRenderer data={sceneData} />
+            <SceneRenderer data={data} />
         </svg>
     )
 }
 
+const sceneData = initialScene as SceneData
+
 export default function App() {
+    const SceneWithData = useCallback(() => <Scene data={sceneData} />, [])
+
     return (
-        <Player
-            component={Scene}
-            durationInFrames={totalFrames}
-            fps={FPS}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, minHeight: '100vh', background: '#1a1a2e' }}>
+            <Player
+                component={SceneWithData}
+                durationInFrames={getTotalFrames(sceneData)}
+                fps={FPS}
             compositionWidth={WIDTH} // how many pixels Scene has to draw in
             compositionHeight={HEIGHT} // how many pixels Scene has to draw in
             style={{ width: WIDTH, height: HEIGHT }} // how big the player appears on the webpage
@@ -74,5 +81,6 @@ export default function App() {
             renderLoading={undefined} // () => ReactNode — custom loading indicator
             errorFallback={undefined} // ({error}) => ReactNode — custom error display
         />
+        </div>
     )
 }

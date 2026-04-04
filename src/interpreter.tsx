@@ -2,20 +2,21 @@ import { useCurrentFrame, useVideoConfig } from 'remotion'
 import { createTimeline } from 'animejs'
 import type { SVGAttributes } from 'react'
 
-interface CharDef {
+export interface CharDef {
     x: number
     y: number
     size: number
     fill: string
+    [prop: string]: unknown
 }
 
-interface Beat {
+export interface Beat {
     t: number
     ease?: string
     [charName: string]: unknown
 }
 
-interface SceneData {
+export interface SceneData {
     characters: Record<string, CharDef>
     beats: Beat[]
 }
@@ -29,8 +30,8 @@ function buildTimeline(scene: SceneData) {
     const tl = createTimeline({ autoplay: false })
 
     for (const [name, def] of Object.entries(scene.characters)) {
-        const { size: _size, fill: _fill, ...rest } = def
-        state[name] = { ...rest }
+        state[name] = { x: def.x, y: def.y }
+        if (typeof def.rotate === 'number') state[name].rotate = def.rotate
     }
 
     for (let i = 1; i < scene.beats.length; i++) {
@@ -42,10 +43,11 @@ function buildTimeline(scene: SceneData) {
         for (const [name] of Object.entries(scene.characters)) {
             const charBeat = beat[name]
             if (charBeat && typeof charBeat === 'object') {
-                const props = charBeat as Record<string, number | { to: number; ease: string }>
+                const props = charBeat as Record<string, number | { to: number; ease?: string; endAt?: number }>
                 for (const [prop, val] of Object.entries(props)) {
                     if (typeof val === 'object' && val !== null) {
-                        tl.add(state[name], { [prop]: val.to, duration, ease: val.ease }, prev.t)
+                        const propDuration = val.endAt ? val.endAt - prev.t : duration
+                        tl.add(state[name], { [prop]: val.to, duration: propDuration, ease: val.ease ?? ease }, prev.t)
                     } else {
                         tl.add(state[name], { [prop]: val, duration, ease }, prev.t)
                     }
