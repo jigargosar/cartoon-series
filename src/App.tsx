@@ -1,11 +1,20 @@
 import { Player } from '@remotion/player'
+import { SVGAttributes } from 'react'
 
 const ASPECT_RATIO = 16 / 9
 const WIDTH = 800
 const HEIGHT = Math.round(WIDTH / ASPECT_RATIO)
 
+function rect(w: number, h: number, attrs?: SVGAttributes<SVGRectElement>) {
+    return <rect x={-w / 2} y={-h / 2} width={w} height={h} {...attrs} />
+}
+
 function Scene() {
-    return <div>Scene</div>
+    return (
+        <svg viewBox="-400 -225 800 450" style={{ background: '#fff', width: '100%', height: '100%' }}>
+            {rect(50, 50, { fill: '#f87171' })}
+        </svg>
+    )
 }
 
 export default function App() {
