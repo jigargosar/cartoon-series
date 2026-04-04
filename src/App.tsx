@@ -14,9 +14,9 @@ export default function App() {
             component={Scene}
             durationInFrames={90} // total frames, must be integer > 0
             fps={30} // frame rate
-            compositionWidth={WIDTH} // video width when rendered as MP4
-            compositionHeight={HEIGHT} // video height when rendered as MP4
-            style={{ width: WIDTH, height: HEIGHT }} // CSS for the player container in browser
+            compositionWidth={WIDTH} // how many pixels Scene has to draw in
+            compositionHeight={HEIGHT} // how many pixels Scene has to draw in
+            style={{ width: WIDTH, height: HEIGHT }} // how big the player appears on the webpage
             controls={true} // show seek bar + play/pause button
             acknowledgeRemotionLicense={true} // suppress license console warning
             loop={false} // restart when video ends
