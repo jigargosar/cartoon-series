@@ -12,12 +12,13 @@ function rect(w: number, h: number, attrs?: SVGAttributes<SVGRectElement>) {
 
 function Scene() {
     const frame = useCurrentFrame()
-    const x = interpolate(frame, [0, 30], [-300, 0], { extrapolateRight: 'clamp' })
+    const redX = interpolate(frame, [0, 30], [-300, 50], { extrapolateRight: 'clamp' })
+    const blueX = interpolate(frame, [30, 45], [100, 300], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
 
     return (
         <svg viewBox="-400 -225 800 450" style={{ background: '#c8d0d8', width: '100%', height: '100%' }}>
-            {rect(50, 50, { fill: '#f87171', style: { translate: `${x}px 0` } })}
-            {rect(50, 50, { fill: '#60a5fa', style: { translate: '100px 0' } })}
+            {rect(50, 50, { fill: '#f87171', style: { translate: `${redX}px 0` } })}
+            {rect(50, 50, { fill: '#60a5fa', style: { translate: `${blueX}px 0` } })}
         </svg>
     )
 }
