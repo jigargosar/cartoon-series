@@ -5,6 +5,7 @@
   },
   "beats": [
     { "t": 0 },
-    { "t": 1000, "red": { "x": 50 }, "ease": "inQuad" }
+    { "t": 1000, "red": { "x": 50 }, "ease": "inQuad" },
+    { "t": 1800, "red": { "x": 0 }, "blue": { "x": 200 }, "ease": "outExpo" }
   ]
 }
