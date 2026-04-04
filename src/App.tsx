@@ -9,7 +9,7 @@ const FPS = 30
 
 // Derive total frames from last beat
 const lastBeat = sceneData.beats[sceneData.beats.length - 1]
-const totalFrames = Math.ceil((lastBeat.t / 1000) * FPS) + FPS // +1s buffer
+const totalFrames = Math.ceil((lastBeat.t / 1000) * FPS) + 5 // small buffer after last beat
 
 function Scene() {
     return (
