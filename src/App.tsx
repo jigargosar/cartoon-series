@@ -1,5 +1,6 @@
 import { Player } from '@remotion/player'
 import { SVGAttributes } from 'react'
+import { useCurrentFrame, interpolate } from 'remotion'
 
 const ASPECT_RATIO = 16 / 9
 const WIDTH = 800
@@ -10,9 +11,12 @@ function rect(w: number, h: number, attrs?: SVGAttributes<SVGRectElement>) {
 }
 
 function Scene() {
+    const frame = useCurrentFrame()
+    const x = interpolate(frame, [0, 30], [-300, 0], { extrapolateRight: 'clamp' })
+
     return (
-        <svg viewBox="-400 -225 800 450" style={{ background: '#fff', width: '100%', height: '100%' }}>
-            {rect(50, 50, { fill: '#f87171' })}
+        <svg viewBox="-400 -225 800 450" style={{ background: '#c8d0d8', width: '100%', height: '100%' }}>
+            {rect(50, 50, { fill: '#f87171', style: { translate: `${x}px 0` } })}
         </svg>
     )
 }
