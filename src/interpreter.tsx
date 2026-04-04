@@ -64,7 +64,10 @@ export function SceneRenderer({ data }: { data: SceneData }) {
                     <g key={name}>
                         {rect(def.size, def.size, {
                             fill: def.fill,
-                            style: { translate: `${s.x}px ${s.y}px` },
+                            style: {
+                                translate: `${s.x}px ${s.y}px`,
+                                rotate: `${s.rotate ?? 0}deg`,
+                            },
                         })}
                     </g>
                 )

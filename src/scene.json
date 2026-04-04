@@ -5,7 +5,8 @@
   },
   "beats": [
     { "t": 0 },
-    { "t": 1000, "red": { "x": 50 }, "ease": "inQuad" },
-    { "t": 1800, "red": { "x": 0 }, "blue": { "x": 200 }, "ease": "outExpo" }
+    { "t": 1000, "red": { "x": 50, "rotate": 10 }, "ease": "inQuad" },
+    { "t": 1800, "red": { "x": 0, "rotate": 0 }, "blue": { "x": 200, "rotate": 12 }, "ease": "outExpo" },
+    { "t": 2500, "blue": { "rotate": 0 }, "ease": "outQuad" }
   ]
 }
