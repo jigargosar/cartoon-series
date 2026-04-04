@@ -1,3 +1,7 @@
 - we don't even know how these work
   - compositionWidth={WIDTH} // how many pixels Scene has to draw in
   - compositionHeight={HEIGHT} // how many pixels Scene has to draw in
+- Remotion Studio + Claude Code for interactive animation prompting
+  - npx create-video@latest, npx remotion studio
+  - Prompt animations in words, Studio shows results instantly
+  - Hybrid Architecture: same components in Player + Studio + video render
