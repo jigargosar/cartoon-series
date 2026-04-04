@@ -29,7 +29,8 @@ function buildTimeline(scene: SceneData) {
     const tl = createTimeline({ autoplay: false })
 
     for (const [name, def] of Object.entries(scene.characters)) {
-        state[name] = { x: def.x, y: def.y }
+        const { size: _size, fill: _fill, ...rest } = def
+        state[name] = { ...rest }
     }
 
     for (let i = 1; i < scene.beats.length; i++) {
@@ -41,7 +42,14 @@ function buildTimeline(scene: SceneData) {
         for (const [name] of Object.entries(scene.characters)) {
             const charBeat = beat[name]
             if (charBeat && typeof charBeat === 'object') {
-                tl.add(state[name], { ...charBeat as Record<string, number>, duration, ease }, prev.t)
+                const props = charBeat as Record<string, number | { to: number; ease: string }>
+                for (const [prop, val] of Object.entries(props)) {
+                    if (typeof val === 'object' && val !== null) {
+                        tl.add(state[name], { [prop]: val.to, duration, ease: val.ease }, prev.t)
+                    } else {
+                        tl.add(state[name], { [prop]: val, duration, ease }, prev.t)
+                    }
+                }
             }
         }
     }
