@@ -1,6 +1,7 @@
 import { Player } from '@remotion/player'
 import { SVGAttributes } from 'react'
-import { useCurrentFrame, useVideoConfig, interpolate, spring } from 'remotion'
+import { useCurrentFrame, useVideoConfig } from 'remotion'
+import { createTimeline } from 'animejs'
 
 const ASPECT_RATIO = 16 / 9
 const WIDTH = 800
@@ -10,71 +11,106 @@ function rect(w: number, h: number, attrs?: SVGAttributes<SVGRectElement>) {
     return <rect x={-w / 2} y={-h / 2} width={w} height={h} {...attrs} />
 }
 
+/*
+function Scene_remotion() {
+    // ... old remotion-only version preserved for comparison
+    // See git history: dd3a258
+}
+*/
+
+// --- anime.js version: choreography in one block ---
+
+const red: Record<string, number> = {}
+const blue: Record<string, number> = {}
+const tl = createTimeline({ autoplay: false })
+
+// Red: full journey per property using keyframes
+tl.add(red, {
+    x: [
+        { to: -300, duration: 150 },           // still
+        { to: 75, duration: 850, ease: 'inQuad' }, // rush to contact
+        { to: 75, duration: 500 },              // hold at impact
+        { to: 20, duration: 800, ease: 'outExpo' }, // slide back with friction
+    ],
+    rotate: [
+        { to: 0, duration: 150 },              // still
+        { to: 10, duration: 250, ease: 'outQuad' }, // lean forward
+        { to: 10, duration: 600 },              // hold lean
+        { to: 0, duration: 50 },                // straighten on impact
+    ],
+    squashX: [
+        { to: 1, duration: 1000 },              // normal until impact
+        { to: 0.65, duration: 80, ease: 'outQuad' }, // compress
+        { to: 0.65, duration: 420 },             // hold
+        { to: 1, duration: 400, ease: 'outElastic(1, 0.5)' }, // spring back
+    ],
+    squashY: [
+        { to: 1, duration: 1000 },
+        { to: 1.2, duration: 80, ease: 'outQuad' },
+        { to: 1.5, duration: 420, ease: 'inOutQuad' }, // grow taller during pause
+        { to: 1, duration: 400, ease: 'outElastic(1, 0.5)' },
+    ],
+    speedLines: [
+        { to: 0, duration: 200 },
+        { to: 0.6, duration: 600 },
+        { to: 0, duration: 50 },                // vanish on impact
+    ],
+}, 0)
+
+// Blue: full journey per property
+tl.add(blue, {
+    x: [
+        { to: 100, duration: 1500 },            // stationary through impact+pause
+        { to: 200, duration: 800, ease: 'outExpo' }, // shoved back, friction stop
+    ],
+    rotate: [
+        { to: 0, duration: 1500 },
+        { to: 12, duration: 400, ease: 'outQuad' }, // tip from shove
+        { to: 0, duration: 600, ease: 'outElastic(1, 0.5)' }, // wobble upright
+    ],
+    squashX: [
+        { to: 1, duration: 1000 },
+        { to: 0.65, duration: 80, ease: 'outQuad' },
+        { to: 0.65, duration: 420 },
+        { to: 1, duration: 400, ease: 'outElastic(1, 0.5)' },
+    ],
+    squashY: [
+        { to: 1, duration: 1000 },
+        { to: 1.2, duration: 80, ease: 'outQuad' },
+        { to: 1.5, duration: 420, ease: 'inOutQuad' },
+        { to: 1, duration: 400, ease: 'outElastic(1, 0.5)' },
+    ],
+}, 0)
+
 function Scene() {
     const frame = useCurrentFrame()
     const { fps } = useVideoConfig()
-    // Think in seconds, convert at the boundary
-    const sec = frame / fps
-    const impactSec = 1.0
-    const impact = Math.round(impactSec * fps)
-    const pause = 8 // visible beat — audience reads the hit
+    tl.seek((frame / fps) * 1000)
 
-    // --- RED: rushes in, shoves blue, steps back ---
-    const redSlide = interpolate(sec, [0.15, impactSec], [-300, 50], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
-    const redBounce = frame >= impact + pause
-        ? spring({ frame: frame - impact - pause, fps, from: 0, to: -40, durationInFrames: 25 })
-        : 0
-    const redX = redSlide + redBounce
-
-    // Still for 0.15s, then leans into the run
-    const redRotate = sec < 0.15 ? 0
-        : sec < impactSec ? interpolate(sec, [0.15, 0.4], [0, 10], { extrapolateRight: 'clamp' })
-        : frame < impact + pause ? 10
-        : spring({ frame: frame - impact - pause, fps, from: 10, to: 0, durationInFrames: 15 })
-
-    // Speed lines near feet, fade in during the run
-    const showSpeedLines = sec >= 0.2 && frame < impact
-    const speedLineOpacity = showSpeedLines ? interpolate(sec, [0.2, impactSec], [0, 0.6], { extrapolateRight: 'clamp' }) : 0
-
-    // --- BLUE: gets shoved, stumbles back, wobbles ---
-    // Slides back and screeches to a stop — high damping, no wobble
-    const blueSlide = frame >= impact + pause
-        ? spring({ frame: frame - impact - pause, fps, from: 0, to: 100, config: { mass: 1, damping: 30 } })
-        : 0
-    const blueX = 100 + blueSlide
-
-    // Tips backward AFTER pause (not during), then settles
-    const blueRotate = frame >= impact + pause
-        ? spring({ frame: frame - impact - pause, fps, from: 0, to: 15, config: { mass: 1.2, damping: 8 } })
-        : 0
-
-    // Blue speed lines — appear as it stumbles backward
-    const showBlueLines = frame >= impact + pause && blueSlide > 5
-    const blueLineOpacity = showBlueLines ? interpolate(blueSlide, [5, 50, 100], [0, 0.5, 0], { extrapolateRight: 'clamp' }) : 0
-
-    // --- SQUASH: compress horizontally, stretch vertically at contact ---
-    const squashX = frame >= impact && frame < impact + pause ? 0.6
-        : frame >= impact + pause
-            ? spring({ frame: frame - impact - pause, fps, from: 0.6, to: 1, config: { mass: 0.4, damping: 10 } })
-            : 1
-    const squashY = frame >= impact && frame < impact + pause ? 1.3
-        : frame >= impact + pause
-            ? spring({ frame: frame - impact - pause, fps, from: 1.3, to: 1, config: { mass: 0.4, damping: 10 } })
-            : 1
+    const showRedLines = (red.speedLines ?? 0) > 0.05 && (red.x ?? -300) < 50
+    const showBlueLines = (blue.x ?? 100) > 110
 
     return (
         <svg viewBox="-400 -225 800 450" style={{ background: '#c8d0d8', width: '100%', height: '100%' }}>
-            {showSpeedLines && <>
-                <line x1={redX - 30} y1={15} x2={redX - 80} y2={15} stroke="#f87171" strokeWidth={2} opacity={speedLineOpacity} />
-                <line x1={redX - 30} y1={22} x2={redX - 100} y2={22} stroke="#f87171" strokeWidth={2} opacity={speedLineOpacity} />
-                <line x1={redX - 30} y1={29} x2={redX - 65} y2={29} stroke="#f87171" strokeWidth={2} opacity={speedLineOpacity} />
+            {showRedLines && <>
+                <line x1={(red.x ?? 0) - 30} y1={15} x2={(red.x ?? 0) - 80} y2={15} stroke="#f87171" strokeWidth={2} opacity={red.speedLines ?? 0} />
+                <line x1={(red.x ?? 0) - 30} y1={22} x2={(red.x ?? 0) - 100} y2={22} stroke="#f87171" strokeWidth={2} opacity={red.speedLines ?? 0} />
+                <line x1={(red.x ?? 0) - 30} y1={29} x2={(red.x ?? 0) - 65} y2={29} stroke="#f87171" strokeWidth={2} opacity={red.speedLines ?? 0} />
             </>}
-            {rect(50, 50, { fill: '#f87171', style: { translate: `${redX}px 0`, rotate: `${redRotate}deg`, scale: `${squashX} ${squashY}` } })}
-            {rect(50, 50, { fill: '#60a5fa', style: { translate: `${blueX}px 0`, rotate: `${blueRotate}deg`, scale: `${squashX} ${squashY}` } })}
+            {rect(50, 50, { fill: '#f87171', style: {
+                translate: `${red.x ?? -300}px 0`,
+                rotate: `${red.rotate ?? 0}deg`,
+                scale: `${red.squashX ?? 1} ${red.squashY ?? 1}`,
+            } })}
+            {rect(50, 50, { fill: '#60a5fa', style: {
+                translate: `${blue.x ?? 100}px 0`,
+                rotate: `${blue.rotate ?? 0}deg`,
+                scale: `${blue.squashX ?? 1} ${blue.squashY ?? 1}`,
+            } })}
             {showBlueLines && <>
-                <line x1={blueX + 30} y1={15} x2={blueX + 70} y2={15} stroke="#60a5fa" strokeWidth={2} opacity={blueLineOpacity} />
-                <line x1={blueX + 30} y1={22} x2={blueX + 85} y2={22} stroke="#60a5fa" strokeWidth={2} opacity={blueLineOpacity} />
-                <line x1={blueX + 30} y1={29} x2={blueX + 60} y2={29} stroke="#60a5fa" strokeWidth={2} opacity={blueLineOpacity} />
+                <line x1={(blue.x ?? 100) + 30} y1={15} x2={(blue.x ?? 100) + 70} y2={15} stroke="#60a5fa" strokeWidth={2} opacity={0.4} />
+                <line x1={(blue.x ?? 100) + 30} y1={22} x2={(blue.x ?? 100) + 85} y2={22} stroke="#60a5fa" strokeWidth={2} opacity={0.4} />
+                <line x1={(blue.x ?? 100) + 30} y1={29} x2={(blue.x ?? 100) + 60} y2={29} stroke="#60a5fa" strokeWidth={2} opacity={0.4} />
             </>}
         </svg>
     )
