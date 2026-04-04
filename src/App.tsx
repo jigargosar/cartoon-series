@@ -1,5 +1,5 @@
-import { useCallback } from 'react'
-import { Player } from '@remotion/player'
+import { useCallback, useRef, useState } from 'react'
+import { Player, type PlayerRef } from '@remotion/player'
 import { SceneRenderer, type SceneData } from './interpreter'
 import initialScene from './scene.json'
 
@@ -21,14 +21,83 @@ function Scene({ data }: { data: SceneData }) {
     )
 }
 
-const sceneData = initialScene as SceneData
+function useDrag(barRef: React.RefObject<HTMLDivElement | null>, totalMs: number, onDrag: (ms: number) => void) {
+    const handleMove = useCallback((e: PointerEvent) => {
+        const bar = barRef.current
+        if (!bar) return
+        const rect = bar.getBoundingClientRect()
+        const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+        onDrag(Math.round(pct * totalMs))
+    }, [barRef, totalMs, onDrag])
+
+    const onPointerDown = useCallback((e: React.PointerEvent) => {
+        e.preventDefault()
+        const target = e.currentTarget as HTMLElement
+        target.setPointerCapture(e.pointerId)
+        const move = (ev: PointerEvent) => handleMove(ev)
+        const up = () => { target.removeEventListener('pointermove', move); target.removeEventListener('pointerup', up) }
+        target.addEventListener('pointermove', move)
+        target.addEventListener('pointerup', up)
+        handleMove(e.nativeEvent)
+    }, [handleMove])
+
+    return onPointerDown
+}
+
+function SnapPoints({ startMs, endMs, totalMs, onChangeStart, onChangeEnd, onSeek }: {
+    startMs: number; endMs: number; totalMs: number
+    onChangeStart: (ms: number) => void; onChangeEnd: (ms: number) => void
+    onSeek: (ms: number) => void
+}) {
+    const barRef = useRef<HTMLDivElement>(null)
+    const dragStart = useDrag(barRef, totalMs, (ms) => { onChangeStart(ms); onSeek(ms) })
+    const dragEnd = useDrag(barRef, totalMs, (ms) => { onChangeEnd(ms); onSeek(ms) })
+
+    const dot = (leftPct: string, onDown: (e: React.PointerEvent) => void) => ({
+        style: { position: 'absolute' as const, left: leftPct, top: '50%', transform: 'translate(-50%, -50%)', cursor: 'ew-resize', background: '#f87171', borderRadius: '50%', width: 14, height: 14, border: '2px solid #fff', touchAction: 'none' as const },
+        onPointerDown: onDown,
+    })
+
+    return (
+        <div ref={barRef} style={{ width: WIDTH, marginTop: 8, position: 'relative', height: 32, background: '#2a2a3a', borderRadius: 6, userSelect: 'none' }}>
+            <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${(startMs / totalMs) * 100}%`, width: `${((endMs - startMs) / totalMs) * 100}%`, background: '#f8717133', borderRadius: 4 }} />
+            <div {...dot(`${(startMs / totalMs) * 100}%`, dragStart)} />
+            <div {...dot(`${(endMs / totalMs) * 100}%`, dragEnd)} />
+            <span style={{ position: 'absolute', left: `${(startMs / totalMs) * 100}%`, top: -16, transform: 'translateX(-50%)', fontFamily: 'monospace', fontSize: 10, color: '#aaa' }}>0° @{startMs}ms</span>
+            <span style={{ position: 'absolute', left: `${(endMs / totalMs) * 100}%`, top: -16, transform: 'translateX(-50%)', fontFamily: 'monospace', fontSize: 10, color: '#aaa' }}>10° @{endMs}ms</span>
+            <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontFamily: 'monospace', fontSize: 10, color: '#666' }}>red.rotate</span>
+        </div>
+    )
+}
 
 export default function App() {
-    const SceneWithData = useCallback(() => <Scene data={sceneData} />, [])
+    const playerRef = useRef<PlayerRef>(null)
+    const [rotateStart, setRotateStart] = useState(0)
+    const [rotateEnd, setRotateEnd] = useState(400)
+    const [sceneData, setSceneData] = useState<SceneData>(initialScene as SceneData)
+    const SceneWithData = useCallback(() => <Scene data={sceneData} />, [sceneData])
+
+    const totalMs = sceneData.beats[sceneData.beats.length - 1].t
+
+    const seekTo = useCallback((ms: number) => {
+        playerRef.current?.seekTo(Math.round((ms / 1000) * FPS))
+        playerRef.current?.pause()
+    }, [])
+
+    const updateRotateTiming = useCallback((startMs: number, endMs: number) => {
+        const next = structuredClone(sceneData)
+        const beat1 = next.beats[1]
+        const redBeat = beat1.red as Record<string, unknown>
+        const rot = redBeat.rotate as { to: number; ease: string; startAt: number; endAt: number }
+        rot.startAt = startMs
+        rot.endAt = endMs
+        setSceneData(next)
+    }, [sceneData])
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, minHeight: '100vh', background: '#1a1a2e' }}>
             <Player
+                ref={playerRef}
                 component={SceneWithData}
                 durationInFrames={getTotalFrames(sceneData)}
                 fps={FPS}
@@ -81,6 +150,12 @@ export default function App() {
             renderLoading={undefined} // () => ReactNode — custom loading indicator
             errorFallback={undefined} // ({error}) => ReactNode — custom error display
         />
+            <SnapPoints
+                startMs={rotateStart} endMs={rotateEnd} totalMs={totalMs}
+                onChangeStart={(ms) => { setRotateStart(ms); updateRotateTiming(ms, rotateEnd) }}
+                onChangeEnd={(ms) => { setRotateEnd(ms); updateRotateTiming(rotateStart, ms) }}
+                onSeek={seekTo}
+            />
         </div>
     )
 }

@@ -43,11 +43,12 @@ function buildTimeline(scene: SceneData) {
         for (const [name] of Object.entries(scene.characters)) {
             const charBeat = beat[name]
             if (charBeat && typeof charBeat === 'object') {
-                const props = charBeat as Record<string, number | { to: number; ease?: string; endAt?: number }>
+                const props = charBeat as Record<string, number | { to: number; ease?: string; startAt?: number; endAt?: number }>
                 for (const [prop, val] of Object.entries(props)) {
                     if (typeof val === 'object' && val !== null) {
-                        const propDuration = val.endAt ? val.endAt - prev.t : duration
-                        tl.add(state[name], { [prop]: val.to, duration: propDuration, ease: val.ease ?? ease }, prev.t)
+                        const propStart = val.startAt ?? prev.t
+                        const propEnd = val.endAt ?? beat.t
+                        tl.add(state[name], { [prop]: val.to, duration: propEnd - propStart, ease: val.ease ?? ease }, propStart)
                     } else {
                         tl.add(state[name], { [prop]: val, duration, ease }, prev.t)
                     }
