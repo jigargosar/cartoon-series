@@ -1,0 +1,9 @@
+{
+  "characters": {
+    "red": { "x": -300, "y": 0, "size": 50, "fill": "#f87171" }
+  },
+  "beats": [
+    { "t": 0 },
+    { "t": 1000, "red": { "x": 0 }, "ease": "inQuad" }
+  ]
+}
