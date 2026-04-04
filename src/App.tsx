@@ -17,6 +17,7 @@ function Scene() {
     return (
         <svg viewBox="-400 -225 800 450" style={{ background: '#c8d0d8', width: '100%', height: '100%' }}>
             {rect(50, 50, { fill: '#f87171', style: { translate: `${x}px 0` } })}
+            {rect(50, 50, { fill: '#60a5fa', style: { translate: '100px 0' } })}
         </svg>
     )
 }
